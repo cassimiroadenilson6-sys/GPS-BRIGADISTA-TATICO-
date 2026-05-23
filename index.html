@@ -1,148 +1,73 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>GPS BRIGADISTA TÁTICO V4.0</title>
-
-    <!-- PWA -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#FF4500">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    <meta name="mobile-web-app-capable" content="yes">
-
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body, html { height: 100%; overflow: hidden; background: #111; }
-        #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        #miniMap {
-            position: absolute; bottom: 10px; right: 10px; width: 40%; height: 30%;
-            border: 3px solid #FF4500; border-radius: 8px; z-index: 1000;
-            box-shadow: 0 0 15px rgba(0,0,0,0.7); background: #222;
-        }
-   .top-bar {
-            position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
-            background: rgba(0,0,0,0.85); color: #00FF00; padding: 8px;
-            font-size: 12px; text-align: center; backdrop-filter: blur(5px);
-            border-bottom: 2px solid #FF4500;
-        }
-   .top-bar span { margin: 0 8px; white-space: nowrap; }
-        #weather {
-            position: absolute; top: 45px; left: 10px; z-index: 1000;
-            background: rgba(0,0,0,0.8); color: white; padding: 8px; border-radius: 8px;
-            font-size: 11px; min-width: 140px;
-        }
-        #compass {
-            position: absolute; top: 45px; right: 10px; z-index: 1000;
-            width: 60px; height: 60px; background: rgba(0,0,0,0.8);
-            border-radius: 50%; border: 2px solid #FF4500;
-        }
-        #compass-arrow {
-            position: absolute; top: 50%; left: 50%; width: 0; height: 0;
-            border-left: 8px solid transparent; border-right: 8px solid transparent;
-            border-bottom: 25px solid #FF0000; transform: translate(-50%, -80%);
-            transform-origin: bottom center;
-        }
-   .controls {
-            position: absolute; bottom: 10px; left: 10px; z-index: 1000;
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
-            width: calc(60% - 20px);
-        }
-   .btn {
-            background: #FF4500; color: white; border: none; padding: 12px 5px;
-            border-radius: 8px; font-size: 11px; font-weight: bold;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.5); cursor: pointer;
-        }
-   .btn:active { background: #CC3700; transform: scale(0.95); }
-   .btn.active { background: #00AA00; }
-        #darkMode { background: #333; }
-   .modal {
-            display: none; position: fixed; z-index: 2000; left: 0; top: 0;
-            width: 100%; height: 100%; background: rgba(0,0,0,0.9);
-            justify-content: center; align-items: center;
-        }
-   .modal-content {
-            background: #222; color: white; padding: 15px; border-radius: 10px;
-            width: 90%; max-width: 400px; max-height: 90%; overflow-y: auto;
-        }
-   .modal input,.modal textarea,.modal select {
-            width: 100%; padding: 8px; margin: 5px 0; background: #333;
-            border: 1px solid #555; color: white; border-radius: 5px;
-        }
-        #signature { border: 1px solid #555; background: #333; width: 100%; height: 150px; }
-   .qap-item { padding: 5px; border-bottom: 1px solid #444; font-size: 12px; }
-        #checklist label { display: block; margin: 5px 0; font-size: 13px; }
-   .leaflet-control-layers { background: rgba(0,0,0,0.8)!important; color: white!important; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPS BRIGADISTA TÁTICO V4.0</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<style>
+body{background:#000;color:#0f0;font-family:monospace;margin:0;padding:10px}
+.topo{border-bottom:1px solid #f40;padding:5px;color:#0f0}
+button{background:#f40;color:#fff;border:none;padding:10px;margin:3px;border-radius:5px;font-weight:bold}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:20px}
+#log{border:1px solid #f40;height:150px;margin-top:10px;padding:5px;overflow:auto}
+</style>
 </head>
 <body>
-    <div id="map"></div>
-    <div id="miniMap"></div>
-
-    <div class="top-bar">
-        <span id="coords">LAT: --°S | LON: --°W</span>
-        <span id="altitude">Alt: --m</span>
-        <span id="speed">0 km/h</span>
-        <span id="datetime">--</span>
-        <span id="city">Machadinho d'Oeste</span>
-    </div>
-
-    <div id="weather">Carregando tempo...</div>
-    <div id="compass"><div id="compass-arrow"></div></div>
-
-    <div class="controls">
-        <button class="btn" id="btnGPS">📍GPS</button>
-        <button class="btn" id="btnFoto">📷FOTO</button>
-        <button class="btn" id="btnTrilha">📍TRILHA</button>
-        <button class="btn" id="btnWPT">📌WPT</button>
-        <button class="btn" id="btnSOS">🆘SOS</button>
-        <button class="btn" id="btnSAT">🛰️SAT</button>
-        <button class="btn" id="btnNASA">🔥NASA</button>
-        <button class="btn" id="btnOffline">📡OFFLINE</button>
-        <button class="btn" id="btnOcorrencia">📋OCORRÊNCIA</button>
-        <button class="btn" id="btnQAP">📻QAP</button>
-        <button class="btn" id="btnCheck">✅CHECKLIST</button>
-        <button class="btn" id="btnShare">📤COORD</button>
-        <button class="btn" id="btnWhats">💬WHATS</button>
-        <button class="btn" id="darkMode">🌙DARK</button>
-    </div>
-
-    <!-- MODAL OCORRENCIA -->
-    <div id="modalOcorrencia" class="modal">
-        <div class="modal-content">
-            <h3>REGISTRO DE OCORRÊNCIA</h3>
-            <input id="oc_data" type="date">
-            <input id="oc_hora" type="time">
-            <input id="oc_municipio" value="Machadinho d'Oeste">
-            <input id="oc_latlon" readonly>
-            <select id="oc_tipo">
-                <option>Incêndio Florestal</option>
-                <option>Busca e Salvamento</option>
-                <option>Vistoria Preventiva</option>
-                <option>Outro</option>
-            </select>
-            <input id="oc_equipe" placeholder="Equipe Envolvida">
-            <textarea id="oc_desc" placeholder="Descrição dos Fatos"></textarea>
-            <textarea id="oc_mat" placeholder="Materiais Utilizados"></textarea>
-            <p>Assinatura: Adenilson Cassimiro</p>
-            <canvas id="signature"></canvas>
-            <button class="btn" onclick="limparAssinatura()">Limpar</button>
-            <button class="btn" onclick="gerarPDF()">GERAR PDF</button>
-            <button class="btn" onclick="fecharModal('modalOcorrencia')">FECHAR</button>
-        </div>
-    </div>
-
-    <!-- MODAL QAP -->
-    <div id="modalQAP" class="modal">
-        <div class="modal-content">
-            <h3>CÓDIGOS QAP</h3>
-            <div class="qap-item" onclick="copiarQAP('QAP')">QAP - Na escuta, atento</div>
-            <div class="qap-item" onclick="copiarQAP('QSL')">QSL - Entendido, confirmado</div>
-            <div class="qap-item" onclick="copiarQAP('QTH')">QTH - Qual sua localização?</div>
-            <div class="qap-item" onclick="copiarQAP('QTA')">QTA - Cancele a mensagem</div>
-            <div class="qap-item" onclick="copiarQAP('QRR')">QRR - SOS Terrestre</div>
-            <div class="qap-item" onclick="copiarQAP('TKS')">TKS - Obrigado</div>
+<div class="topo">
+LAT: <span id="lat">--°S</span> | LON: <span id="lon">--°W</span> | Alt: <span id="alt">--m</span> | <span id="vel">0 km/h</span>
+</div>
+<div id="log">Carregando...</div>
+<div class="grid">
+<button onclick="pegarGPS()">📍GPS</button>
+<button onclick="tirarFoto()">📸FOTO</button>
+<button onclick="gravarTrilha()">📍TRILHA</button>
+<button onclick="marcarWPT()">📌WPT</button>
+<button onclick="enviarSOS()">🆘SOS</button>
+<button onclick="alert('Função SAT')">🛰️SAT</button>
+<button onclick="alert('Função NASA')">🔥NASA</button>
+<button onclick="alert('Modo Offline Ativo')">📡OFFLINE</button>
+<button onclick="alert('Função Ocorrência')">📋OCORRÊNCIA</button>
+<button onclick="alert('QAP')">📻QAP</button>
+<button onclick="alert('Checklist')">✅CHECKLIST</button>
+<button onclick="copiarCoord()">📋COORD</button>
+<button onclick="window.open('https://wa.me/')">💬WHATS</button>
+<button onclick="document.body.classList.toggle('dark')">🌙DARK</button>
+</div>
+<script>
+let lat=0,lon=0;
+function log(msg){document.getElementById('log').innerHTML=msg;}
+function pegarGPS(){
+if(navigator.geolocation){
+log('Buscando GPS...');
+navigator.geolocation.getCurrentPosition(p=>{
+lat=p.coords.latitude;
+lon=p.coords.longitude;
+document.getElementById('lat').innerText=lat.toFixed(5)+'°S';
+document.getElementById('lon').innerText=lon.toFixed(5)+'°W';
+document.getElementById('alt').innerText=p.coords.altitude?.toFixed(0)+'m' || '--m';
+document.getElementById('vel').innerText=(p.coords.speed*3.6)?.toFixed(0)+' km/h' || '0 km/h';
+log(`GPS OK: ${lat.toFixed(5)}, ${lon.toFixed(5)}`);
+},e=>{log('ERRO GPS: Permissão negada. Clica no 🔒 e permite Localização.');});
+}else{log('GPS não suportado');}
+}
+function marcarWPT(){
+if(lat===0){log('Pega o GPS primeiro!');return;}
+log(`WPT Marcado: ${lat.toFixed(5)}, ${lon.toFixed(5)}`);
+}
+function gravarTrilha(){log('Trilha iniciada. Em desenvolvimento.');}
+function enviarSOS(){
+if(lat===0){log('Pega o GPS primeiro!');return;}
+let msg=`SOS BRIGADISTA%0ALAT:${lat.toFixed(5)}%0ALON:${lon.toFixed(5)}%0AGoogle Maps: https://maps.google.com/?q=${lat},${lon}`;
+window.open(`https://wa.me/?text=${msg}`);
+}
+function copiarCoord(){
+navigator.clipboard.writeText(`${lat}, ${lon}`);
+log('Coordenadas copiadas!');
+}
+function tirarFoto(){log('Função FOTO: em desenvolvimento');}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}
+</script>
+</body>
+</html>
