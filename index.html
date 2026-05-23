@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>GPS BRIGADISTA TÁTICO V4.0</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#FF4500">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body, html { height: 100%; overflow: hidden; background: #111; }
+        #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #miniMap {
+            position: absolute; bottom: 10px; right: 10px; width: 40%; height: 30%;
+            border: 3px solid #FF4500; border-radius: 8px; z-index: 1000;
+            box-shadow: 0 0 15px rgba(0,0,0,0.7); background: #222;
+        }
+   .top-bar {
+            position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
+            background: rgba(0,0,0,0.85); color: #00FF00; padding: 8px;
+            font-size: 12px; text-align: center; backdrop-filter: blur(5px);
+            border-bottom: 2px solid #FF4500;
+        }
+   .top-bar span { margin: 0 8px; white-space: nowrap; }
+        #weather {
+            position: absolute; top: 45px; left: 10px; z-index: 1000;
+            background: rgba(0,0,0,0.8); color: white; padding: 8px; border-radius: 8px;
+            font-size: 11px; min-width: 140px;
+        }
+        #compass {
+            position: absolute; top: 45px; right: 10px; z-index: 1000;
+            width: 60px; height: 60px; background: rgba(0,0,0,0.8);
+            border-radius: 50%; border: 2px solid #FF4500;
+        }
+        #compass-arrow {
+            position: absolute; top: 50%; left: 50%; width: 0; height: 0;
+            border-left: 8px solid transparent; border-right: 8px solid transparent;
+            border-bottom: 25px solid #FF0000; transform: translate(-50%, -80%);
+            transform-origin: bottom center;
+        }
+   .controls {
+            position: absolute; bottom: 10px; left: 10px; z-index: 1000;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+            width: calc(60% - 20px);
+        }
+   .btn {
+            background: #FF4500; color: white; border: none; padding: 12px 5px;
+            border-radius: 8px; font-size: 11px; font-weight: bold;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.5); cursor: pointer;
+        }
+   .btn:active { background: #CC3700; transform: scale(0.95); }
+   .btn.active { background: #00AA00; }
+        #darkMode { background: #333; }
+   .modal {
+            display: none; position: fixed; z-index: 2000; left: 0; top: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.9);
+            justify-content: center; align-items: center;
+        }
+   .modal-content {
+            background: #222; color: white; padding: 15px; border-radius: 10px;
+            width: 90%; max-width: 400px; max-height: 90%; overflow-y: auto;
+        }
+   .modal input,.modal textarea,.modal select {
+            width: 100%; padding: 8px; margin: 5px 0; background: #333;
+            border: 1px solid #555; color: white; border-radius: 5px;
+        }
+        #signature { border: 1px solid #555; background: #333; width: 100%; height: 150px; }
+   .qap-item { padding: 5px; border-bottom: 1px solid #444; font-size: 12px; }
+        #checklist label { display: block; margin: 5px 0; font-size: 13px; }
+   .leaflet-control-layers { background: rgba(0,0,0,0.8)!important; color: white!important; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="miniMap"></div>
+
+    <div class="top-bar">
+        <span id="coords">LAT: --°S | LON: --°W</span>
+        <span id="altitude">Alt: --m</span>
+        <span id="speed">0 km/h</span>
+        <span id="datetime">--</span>
+        <span id="city">Machadinho d'Oeste</span>
+    </div>
+
+    <div id="weather">Carregando tempo...</div>
+    <div id="compass"><div id="compass-arrow"></div></div>
+
+    <div class="controls">
+        <button class="btn" id="btnGPS">📍GPS</button>
+        <button class="btn" id="btnFoto">📷FOTO</button>
+        <button class="btn" id="btnTrilha">📍TRILHA</button>
+        <button class="btn" id="btnWPT">📌WPT</button>
+        <button class="btn" id="btnSOS">🆘SOS</button>
+        <button class="btn" id="btnSAT">🛰️SAT</button>
+        <button class="btn" id="btnNASA">🔥NASA</button>
+        <button class="btn" id="btnOffline">📡OFFLINE</button>
+        <button class="btn" id="btnOcorrencia">📋OCORRÊNCIA</button>
+        <button class="btn" id="btnQAP">📻QAP</button>
+        <button class="btn" id="btnCheck">✅CHECKLIST</button>
+        <button class="btn" id="btnShare">📤COORD</button>
+        <button class="btn" id="btnWhats">💬WHATS</button>
+        <button class="btn" id="darkMode">🌙DARK</button>
+    </div>
+
+    <!-- MODAL OCORRENCIA -->
+    <div id="modalOcorrencia" class="modal">
+        <div class="modal-content">
+            <h3>REGISTRO DE OCORRÊNCIA</h3>
+            <input id="oc_data" type="date">
+            <input id="oc_hora" type="time">
+            <input id="oc_municipio" value="Machadinho d'Oeste">
+            <input id="oc_latlon" readonly>
+            <select id="oc_tipo">
+                <option>Incêndio Florestal</option>
+                <option>Busca e Salvamento</option>
+                <option>Vistoria Preventiva</option>
+                <option>Outro</option>
+            </select>
+            <input id="oc_equipe" placeholder="Equipe Envolvida">
+            <textarea id="oc_desc" placeholder="Descrição dos Fatos"></textarea>
+            <textarea id="oc_mat" placeholder="Materiais Utilizados"></textarea>
+            <p>Assinatura: Adenilson Cassimiro</p>
+            <canvas id="signature"></canvas>
+            <button class="btn" onclick="limparAssinatura()">Limpar</button>
+            <button class="btn" onclick="gerarPDF()">GERAR PDF</button>
+            <button class="btn" onclick="fecharModal('modalOcorrencia')">FECHAR</button>
+        </div>
+    </div>
+
+    <!-- MODAL QAP -->
+    <div id="modalQAP" class="modal">
+        <div class="modal-content">
+            <h3>CÓDIGOS QAP</h3>
+            <div class="qap-item" onclick="copiarQAP('QAP')">QAP - Na escuta, atento</div>
+            <div class="qap-item" onclick="copiarQAP('QSL')">QSL - Entendido, confirmado</div>
+            <div class="qap-item" onclick="copiarQAP('QTH')">QTH - Qual sua localização?</div>
+            <div class="qap-item" onclick="copiarQAP('QTA')">QTA - Cancele a mensagem</div>
+            <div class="qap-item" onclick="copiarQAP('QRR')">QRR - SOS Terrestre</div>
+            <div class="qap-item" onclick="copiarQAP('TKS')">TKS - Obrigado</div>
